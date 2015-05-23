@@ -11,7 +11,6 @@ ssc = StreamingContext(sc, 1)
 ksc = KafkaUtils.createStream(ssc, ZOOKEEPER, CONSUMER_GROUP, {TEST_TOPIC: 5})
 
 lines = ksc.map(lambda x: x[1])
-lines.pprint()
 
 words = lines.flatMap(lambda line: line.split(" "))
 pairs = words.map(lambda word: (word, 1))

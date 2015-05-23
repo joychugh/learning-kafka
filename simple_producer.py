@@ -11,9 +11,7 @@ def print_response(response):
 
 producer = SimpleProducer(KAFKA)
 
-producer_response = producer.send_messages(TEST_TOPIC, str(date.today()).encode('utf-8'))
-print_response(producer_response)
-producer_response = producer.send_messages(TEST_TOPIC, str(datetime.now().second).encode('utf-8'))
+producer_response = producer.send_messages(TEST_TOPIC, str("Hello World World Kafka Spark World Hello Kafka").encode('utf-8'))
 print_response(producer_response)
 
 KAFKA.close()
