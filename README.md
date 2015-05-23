@@ -1,3 +1,3 @@
 # learning-kafka
-Just an attempt to learn kafka and its integration with Storm
+Just an attempt to learn kafka and its integration with Spark
 x
