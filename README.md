@@ -18,7 +18,7 @@ Just an attempt to learn kafka and its integration with Spark
   * save and exit
   * NOTE: this wont work with an IDE, for an IDE you will have to manually add this env variable to run/debug options.
 
-6. add `pyspark` to PYTHONPATH There are may ways to do it. I personally like this http://stackoverflow.com/a/12311321 
+6. add `pyspark` module (`SPARK_HOME/python` to PYTHONPATH There are may ways to do it. I personally like this http://stackoverflow.com/a/12311321 
   * NOTE: pyspark code is not python3 compatible as of 1.3.1
 
 You can just run your program straight from command line no need to reach out to spark-submit for your development code.
