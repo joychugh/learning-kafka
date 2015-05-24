@@ -1,6 +1,5 @@
 __author__ = 'jchugh'
 
-from datetime import date, datetime
 from kafka import SimpleProducer
 from main import TEST_TOPIC, KAFKA
 
