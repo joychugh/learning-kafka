@@ -1,9 +1,11 @@
 __author__ = 'jchugh'
-from main import TEST_TOPIC, KAFKA, CONSUMER_GROUP
+from main import KAFKA, CONFIG
 from kafka import SimpleConsumer
 
-kafka_consumer = SimpleConsumer(KAFKA, CONSUMER_GROUP, TEST_TOPIC,
-                                auto_offset_reset='smallest')
+kafka_consumer = SimpleConsumer(KAFKA,
+                                CONFIG.get('kafka', 'consumer_group'),
+                                CONFIG.get('kafka', 'topic'),
+                                auto_offset_reset=CONFIG.get('kafka', 'auto_offset_reset'))
 
 for message in kafka_consumer:
     print(message)

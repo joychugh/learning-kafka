@@ -1,7 +1,7 @@
 __author__ = 'jchugh'
 
 from kafka import SimpleProducer
-from main import TEST_TOPIC, KAFKA
+from main import CONFIG, KAFKA
 
 def print_response(response):
     if response:
@@ -10,7 +10,9 @@ def print_response(response):
 
 producer = SimpleProducer(KAFKA)
 
-producer_response = producer.send_messages(TEST_TOPIC, str("Hello World World Kafka Spark World Hello Kafka").encode('utf-8'))
+producer_response = producer.send_messages(CONFIG.get('kafka', 'topic'),
+                                           str('Hello World World Kafka Spark World Hello Kafka')
+                                           .encode('utf-8'))
 print_response(producer_response)
 
 KAFKA.close()
