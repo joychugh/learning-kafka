@@ -5,7 +5,7 @@ A class representing a request
 """
 
 class Request(object):
-    def __init__(self, url, method, query_params=None, payload=None, headers=None):
+    def __init__(self, url, method, query_params=None, payload=None, headers=None, is_streaming=False):
         """
         Initialize the request object
         :param url: target url
@@ -18,6 +18,8 @@ class Request(object):
         :type payload: dict
         :param headers: additional headers as a dictionary to send as the part of the request.
         :type headers: dict
+        :param is_streaming: boolean value that determines is this request a streaming request.
+        :type is_streaming: bool
         :return: the request object
         :rtype: Request
         """
@@ -26,6 +28,7 @@ class Request(object):
         self.__query_params = query_params
         self.__headers = headers
         self.__payload = payload
+        self.__is_streaming = is_streaming
 
     def get_url(self):
         return self.__url
@@ -41,6 +44,14 @@ class Request(object):
 
     def get_payload(self):
         return self.__payload
+
+    def is_streaming(self):
+        """
+        Is the request a streaming request?
+        :return: boolean to identify if the request is a streaming request
+        :rtype: bool
+        """
+        return self.__is_streaming
 
     def update_request_payload(self, payload):
         """

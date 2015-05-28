@@ -2,6 +2,7 @@ __author__ = 'jchugh'
 import uuid
 import time
 import oauth_utils
+from requests.models import Response
 import requests
 import copy
 from oauth_request import Request
@@ -21,9 +22,30 @@ class Oauth(object):
                  request_token_url,
                  access_token_url,
                  authorize_url,
-                 invalidate_token_url,
+                 callback_url='oob',
                  version='1.0',
                  token=None):
+        """
+        Initialize the Oauth client
+        :param consumer_key: consumer key given by the service provider. eg. Twitter
+        :type consumer_key: str
+        :param consumer_secret: consumer secret given by the service provider. eg Twitter
+        :type consumer_secret: str
+        :param request_token_url: url to get the request token
+        :type request_token_url: str
+        :param access_token_url: url to get the access token
+        :type access_token_url: str
+        :param authorize_url: url for the user to authorize the app
+        :type authorize_url: str
+        :param callback_url: the call back url for the app to redirect the user after authorization. Defaults to oob
+        :type: str
+        :param version: Oauth Version (defaults to 1.0)
+        :type version: str
+        :param token: access token object if you already have it. Leave blank to generate it.
+        :type token: Token
+        :return: oauth client instance
+        :rtype: Oauth
+        """
         self.__consumer_key = consumer_key
         self.__signature_method = 'HMAC-SHA1'
         self.__version = version
@@ -34,13 +56,138 @@ class Oauth(object):
         self.__auth_headers = None
         self.__token = token
         self.__signature = None
-        self.__authorization_header_value = None
         self.__access_token_url = access_token_url
         self.__request_token_url = request_token_url
         self.__authorize_url = authorize_url
-        self.__invalidate_token_url = invalidate_token_url
+        self.__callback_url = callback_url
         self.__response = None
         self.__request = None
+
+    def make_request(self, request, token=None):
+        """
+        Initiate the request
+        :param request: The request to initiate
+        :type request: Request
+        :return: the response
+        :rtype: Response
+        """
+        self.__request = request
+        self.__token = token
+        # If token not present, get it.
+        if not self.__token:
+            original_request = copy.deepcopy(self.__request)
+            self.__get_auth_token_and_secret()
+            self.__request = original_request
+        self.__prepare_request()
+        self.__make_request(self.__request)
+        return self.get_response()
+
+    def get_content(self):
+        """
+        Returns the content of the response
+        :return: the response content
+        :rtype: str
+        """
+        return self.__response.content
+
+    def get_status_code(self):
+        """
+        Returns the response status code
+        :return: request status code
+        :rtype: int
+        """
+        return self.__response.status_code
+
+    def get_response(self):
+        """
+        Returns the full response, in most cases this would not be necessary.
+        :return: the response object
+        :rtype: Response
+        """
+        return self.__response
+
+    def get_token(self):
+        """
+        Returns the saved token
+        :return: the saved token
+        :rtype: Token
+        """
+        return self.__token
+
+    def generate_token(self):
+        """
+        Generate the token and return it
+        :return: generated access token
+        :rtype: Token
+        """
+        self.__get_auth_token_and_secret()
+        return self.get_token()
+
+    def __prepare_request(self):
+        self.__initialize_authorization_headers()
+        self.__generate_parameter_string()
+        self.__generate_signature_base_string()
+        self.__generate_signing_key()
+        self.__generate_signature_hmac_sha1()
+        self.__update_authorization_headers_with_signature()
+        self.__generate_authorization_header_value()
+
+    def __get_auth_token_and_secret(self):
+        # Step 1 Get Request Tokens and Secret
+        self.__request = Request(self.__request_token_url, 'POST')
+        self.__prepare_request()
+        self.__make_request(self.__request)
+        self.__set_oauth_token_and_secret(self.get_content())
+
+        # Step 2 get Access Tokens
+        self.__request = Request(self.__access_token_url, 'POST')
+        oauth_verifier = raw_input("Visit {authorize_url}?oauth_token={request_token} on your browser "
+                                   "to authorize the app and enter the pin: ".format(authorize_url=self.__authorize_url,
+                                                                   request_token=self.__token.get_token()))
+        self.__request = Request(self.__access_token_url, 'POST', payload={'oauth_verifier': oauth_verifier})
+        self.__prepare_request()
+        self.__make_request(self.__request)
+        self.__set_oauth_token_and_secret(self.get_content())
+
+    def __set_oauth_token_and_secret(self, api_response):
+        oauth_request_tokens = oauth_utils.rfc3986_url_decode(api_response)
+        oauth_token = str(oauth_request_tokens['oauth_token'][0])
+        oauth_token_secret = str(oauth_request_tokens['oauth_token_secret'][0])
+        self.__token = Token(oauth_token, oauth_token_secret)
+
+    def __make_request(self, request):
+        """
+        Make the request
+        :param request: the request object
+        :type request: Request
+        :return: None
+        :rtype: class:`Response`
+        """
+        method = request.get_method()
+        is_streaming = request.is_streaming()
+        if method == 'POST':
+            self.__response = requests.post(request.get_url(),
+                                            data=request.get_payload(),
+                                            json=None,
+                                            params=request.get_query_params(),
+                                            headers=request.get_headers(),
+                                            stream=is_streaming)
+        elif method == 'GET':
+            self.__response = requests.get(request.get_headers(),
+                                           params=request.get_query_params(),
+                                           headers=request.get_headers(),
+                                           stream=is_streaming)
+        elif method == 'PUT':
+            self.__response = requests.put(request.get_url(),
+                                           data=request.get_payload(),
+                                           params=request.get_query_params(),
+                                           headers=request.get_headers())
+        elif method == 'DELETE':
+            self.__response = requests.delete(request.get_url(),
+                                              params=request.get_query_params(),
+                                              headers=request.get_headers())
+        else:
+            raise TypeError("Invalid or unsupported request method")
 
     def __initialize_authorization_headers(self):
         auth_headers = {'oauth_consumer_key': self.__consumer_key,
@@ -48,13 +195,14 @@ class Oauth(object):
                         'oauth_signature_method': self.__signature_method,
                         'oauth_timestamp': Oauth._get_timestamp(),
                         'oauth_version': self.__version,
-                        'oauth_callback': 'oob'}
+                        'oauth_callback': self.__callback_url
+                        }
         if self.__token:
             auth_headers['oauth_token'] = self.__token.get_token()
         self.__auth_headers = auth_headers
 
     def __generate_parameter_string(self):
-        parameter_string_payload = self.__auth_headers
+        parameter_string_payload = dict(self.__auth_headers)
         if self.__request.get_payload():
             parameter_string_payload.update(self.__request.get_payload())
         if self.__request.get_query_params():
@@ -88,138 +236,6 @@ class Oauth(object):
                                                                                     oauth_utils.rfc3986_encode(t[1])),
                                                        sorted(self.__auth_headers.items())))
         self.__request.update_headers({'Authorization': authorization_header})
-
-    def get_content(self):
-        """
-        Returns the content of the response
-        :return: the response content
-        :rtype: str
-        """
-        return self.__response.content
-
-    def get_status_code(self):
-        """
-        Returns the response status code
-        :return: request status code
-        :rtype: int
-        """
-        return self.__response.status_code
-
-    def get_response(self):
-        """
-        Returns the full response object, in most cases this would not be necessary.
-        :return: the response object
-        :rtype: requests.models.Response
-        """
-        return self.__response
-
-    def make_request(self, request, token=None):
-        """
-        Initiate the request
-        :param request: The request to initiate
-        :type request: Request
-        :return: None
-        :rtype: None
-        """
-        self.__request = request
-        self.__token = token
-        if not self.__token:
-            original_request = copy.deepcopy(self.__request)
-            self.__get_auth_token_and_secret()
-            self.__request = original_request
-        self.__prepare_request()
-        self.__make_request(self.__request)
-
-    def invalidate_token(self, token):
-        """
-        Invalidate the given token
-        :param token: The token to invalidate
-        :type token: Token
-        :return: The invalidated token value
-        :rtype: dict
-        """
-        self.__token = token
-        self.__request = Request(self.__invalidate_token_url, 'POST', payload={'access_token': token.get_token()})
-        self.__prepare_request()
-        self.__make_request(self.__request)
-        if self.get_status_code() == '200':
-            return self.get_response()
-
-    def get_token(self):
-        return self.__token
-
-    def generate_token(self):
-        """
-        Generate the token and return it
-        :return: generated access token
-        :rtype: Token
-        """
-        self.__get_auth_token_and_secret()
-        return self.get_token()
-
-    def __prepare_request(self):
-        self.__initialize_authorization_headers()
-        self.__generate_parameter_string()
-        self.__generate_signature_base_string()
-        self.__generate_signing_key()
-        self.__generate_signature_hmac_sha1()
-        self.__update_authorization_headers_with_signature()
-        self.__generate_authorization_header_value()
-
-    def __get_auth_token_and_secret(self):
-        # Step 1 Get Request Tokens and Secret
-        self.__request = Request(self.__request_token_url, 'POST')
-        self.__prepare_request()
-        self.__make_request(self.__request)
-        self.__set_oauth_token_and_secret(self.get_content())
-
-        # Step 2 get Access Tokens
-        self.__request = Request(self.__access_token_url, 'POST')
-        print "Visit {authorize_url}?oauth_token={request_token} " \
-              "on your browser authorize the app and enter the pin".format(authorize_url=self.__authorize_url,
-                                                                           request_token=self.__token.get_token())
-        oauth_verifier = raw_input("Enter the pin you got from the browser: ")
-        self.__request = Request(self.__access_token_url, 'POST', payload={'oauth_verifier': oauth_verifier})
-        self.__prepare_request()
-        self.__make_request(self.__request)
-        self.__set_oauth_token_and_secret(self.get_content())
-
-    def __set_oauth_token_and_secret(self, api_response):
-        oauth_request_tokens = oauth_utils.rfc3986_url_decode(api_response)
-        oauth_token = str(oauth_request_tokens['oauth_token'][0])
-        oauth_token_secret = str(oauth_request_tokens['oauth_token_secret'][0])
-        self.__token = Token(oauth_token, oauth_token_secret)
-
-    def __make_request(self, request):
-        """
-        Make the request
-        :param request: the request object
-        :type request: Request
-        :return: None
-        :rtype: None
-        """
-        method = request.get_method()
-        if method == 'POST':
-            self.__response = requests.post(request.get_url(),
-                                            data=oauth_utils.rfc3986_url_encode(request.get_payload()),
-                                            json=None,
-                                            params=oauth_utils.rfc3986_url_encode(request.get_query_params()),
-                                            headers=request.get_headers())
-        elif method == 'GET':
-            self.__response = requests.get(request.get_headers(),
-                                           params=oauth_utils.rfc3986_url_encode(request.get_query_params()),
-                                           headers=request.get_headers())
-        elif method == 'PUT':
-            self.__response = requests.put(request.get_url(),
-                                           data=oauth_utils.rfc3986_url_encode(request.get_payload()),
-                                           params=oauth_utils.rfc3986_url_encode(request.get_query_params()),
-                                           headers=request.get_headers())
-        elif method == 'DELETE':
-            self.__response = requests.delete(request.get_url(),
-                                              params=oauth_utils.rfc3986_url_encode(request.get_query_params()),
-                                              headers=request.get_headers())
-        else:
-            raise TypeError("Invalid or unsupported request method")
 
     @staticmethod
     def _get_nonce():
