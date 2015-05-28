@@ -63,7 +63,7 @@ class Oauth(object):
         self.__response = None
         self.__request = None
 
-    def make_request(self, request, token=None):
+    def make_request(self, request):
         """
         Initiate the request
         :param request: The request to initiate
@@ -72,7 +72,7 @@ class Oauth(object):
         :rtype: Response
         """
         self.__request = request
-        self.__token = token
+        self.__token = request.get_token()
         # If token not present, get it.
         if not self.__token:
             original_request = copy.deepcopy(self.__request)
@@ -105,6 +105,14 @@ class Oauth(object):
         :rtype: Response
         """
         return self.__response
+
+    def get_response_content_iterator(self):
+        """
+        Returns the iterator for the response content
+        :return: response data iterator
+        :rtype: iterator
+        """
+        return self.__response.iter_lines()
 
     def get_token(self):
         """

@@ -2,12 +2,16 @@ __author__ = 'jchugh'
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kafka import KafkaUtils
-from main import TEST_TOPIC, ZOOKEEPER, CONSUMER_GROUP, TOPIC_PARTITIONS
+from main import CONFIG
 
 
 sc = SparkContext("local[2]", "KafkaWordCount")
 ssc = StreamingContext(sc, 1)
-ksc = KafkaUtils.createStream(ssc, ZOOKEEPER, CONSUMER_GROUP, {TEST_TOPIC: TOPIC_PARTITIONS})
+ksc = KafkaUtils.createStream(ssc,
+                              CONFIG.get('zookeeper', 'host'),
+                              CONFIG.get('kafka', 'consumer_group'),
+                              {CONFIG.get('kafka', 'topic'): CONFIG.get('kafka', 'topic_partitions')}
+                              )
 
 lines = ksc.map(lambda x: x[1])
 

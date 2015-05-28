@@ -1,17 +1,20 @@
 __author__ = 'jchugh'
+from oauth_token import Token
 
 """
 A class representing a request
 """
 
 class Request(object):
-    def __init__(self, url, method, query_params=None, payload=None, headers=None, is_streaming=False):
+    def __init__(self, url, method, token=None, query_params=None, payload=None, headers=None, is_streaming=False):
         """
         Initialize the request object
         :param url: target url
         :type url: str
         :param method: the method used to execute the request (GET, POST, PUT, DELETE)
         :type method: str
+        :param token: oAuth access token object to be used with this request
+        :type token: Token
         :param query_params: query parameters for the request as a dictionary
         :type query_params: dict
         :param payload: request body, as a dictionary
@@ -29,6 +32,7 @@ class Request(object):
         self.__headers = headers
         self.__payload = payload
         self.__is_streaming = is_streaming
+        self.__token = token
 
     def get_url(self):
         return self.__url
@@ -44,6 +48,14 @@ class Request(object):
 
     def get_payload(self):
         return self.__payload
+
+    def get_token(self):
+        """
+        Return the token associated with this request
+        :return: token
+        :rtype: Token
+        """
+        return self.__token
 
     def is_streaming(self):
         """
