@@ -1,8 +1,16 @@
 # learning-kafka
 Just an attempt to learn kafka and its integration with Spark
 
-#### How to run spark kafka integration directly from command line.
+### Installation Notes
 
+Python libraries required
+* [kafka-python](https://github.com/mumrah/kafka-python) *version 0.9.4-dev used for this project*
+* [requests](https://pypi.python.org/pypi/requests/2.7.0)
+* [uritools](https://pypi.python.org/pypi/uritools/0.12.0)
+* pyspark comes bundled with spark.
+* *optional* [simplejson](https://pypi.python.org/pypi/simplejson/3.7.2)
+
+#### How to run spark kafka integration directly from command line.
 **`<SPARK-HOME>` refers to the directory where you extracted spark.**
 
 1. Download http://search.maven.org/remotecontent?filepath=org/apache/spark/spark-streaming-kafka-assembly_2.10/1.3.1/spark-streaming-kafka-assembly_2.10-1.3.1.jar
@@ -12,7 +20,7 @@ Just an attempt to learn kafka and its integration with Spark
   * `appendToClasspath "$FWDIR"/lib/spark-streaming-kafka-assembly_2.10-1.3.1.jar`
 5. test that kafka assembly will get picked up by spark just run 
   * `<SPARK-HOME>/bin/compute_classpath.sh` 
-  * it should look like (basically have the kafka assemly jar in the list)
+  * it should look like (basically have the kafka assembly jar in the list)
     * `/usr/spark/conf:/usr/spark/lib/spark-assembly-1.3.1-hadoop2.6.0.jar:/usr/spark/lib/datanucleus-rdbms-3.2.9.jar:/usr/spark/lib/datanucleus-core-3.2.10.jar:/usr/spark/lib/datanucleus-api-jdo-3.2.6.jar:/usr/spark/lib/spark-streaming-kafka-assembly_2.10-1.3.1.jar`
 	
 5. to your ~/.bashrc append the following lines
