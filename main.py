@@ -5,8 +5,8 @@ from oauth_request import Request
 from oauth_token import Token
 import ConfigParser
 from ConfigParser import NoOptionError
-from twitter import TwitterStream
-
+from twitter import TwitterStream, Tweets
+from kafka import KeyedProducer
 try:
     import simplejson as json
 except ImportError:
@@ -15,12 +15,6 @@ except ImportError:
 
 CONFIG = ConfigParser.ConfigParser()
 CONFIG.read("configurations.ini")
-
-KAFKA = KafkaClient('{host}:{port}'.format(
-    host=CONFIG.get('kafka', 'host'),
-    port=CONFIG.get('kafka', 'port')
-    )
-)
 
 try:
     token = Token(CONFIG.get('oauth', 'access_token'),
@@ -43,23 +37,59 @@ request = Request(url=CONFIG.get('twitter', 'streaming_sample_url'),
                   headers={'Accept-Encoding': 'deflate, gzip '},
                   token=token)
 
-twitter = TwitterStream(oauth_client)
-data_stream = twitter.get_stream(request)
-
-
-def start_streaming(stream):
-    raw_text = next(stream)
-    try:
-        item = json.loads(raw_text)
-        if 'text' in item:
-            print item['text']
-    except json.scanner.JSONDecodeError as e:
-        pass
-
+kafka_client = KafkaClient(CONFIG.get('kafka', 'hosts'))
+producer = KeyedProducer(kafka_client, async=True)
+twitter = TwitterStream(oauth_client, json)
 max_stream = int(CONFIG.get('twitter', 'max_stream_responses'))
-if max_stream < 0:
+tweets = twitter.get_tweets(request)
+topic = CONFIG.get('kafka', 'topic')
+max_skip_invalid_responses = CONFIG.get('twitter', 'max_skip_invalid_response')
+skip_invalid_responses = CONFIG.get('twitter', 'skip_invalid')
+
+
+def send_messages(t_tweets, k_producer, k_topic, skip_invalid=False, max_skip=0):
+    tweet = next(t_tweets)
+    skips = max_skip
+    while skip_invalid and not tweet and skips < max_skip:
+        tweet = next(t_tweets)
+        skips += 1
+    if tweet is None:
+        return
+    try:
+        k_producer.send(topic=k_topic,
+                        key=tweet.get_user_id(),
+                        msg=tweet.get_message())
+    except Exception as ex:
+        print "-------"
+        print "Error with sending message"
+        print str(ex)
+        print "-------"
+
+
+def send_unlimited_messages(t_tweets, k_producer, k_topic):
     while True:
-        start_streaming(data_stream)
-else:
-    for i in range(0, max_stream):
-        start_streaming(data_stream)
+        send_messages(t_tweets, k_producer, k_topic)
+
+def send_limited_messages(count, d_stream, t_tweets, k_topic, skip_invalid, max_skip):
+    for i in range(0, count):
+        send_messages(d_stream, t_tweets, k_topic, skip_invalid, max_skip)
+
+# Starts here.
+try:
+    if max_stream < 0:
+        send_unlimited_messages(tweets, producer, topic)
+    else:
+        send_limited_messages(max_stream, tweets, producer, topic, skip_invalid_responses, max_skip_invalid_responses)
+except Exception as e:
+    print e
+finally:
+    producer.stop()
+    kafka_client.close()
+
+
+
+def print_response(response):
+    if response:
+        print(response[0].error)
+        print(response[0].offset)
+
