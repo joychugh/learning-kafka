@@ -1,7 +1,6 @@
 __author__ = 'jchugh'
 
-from oauth import Oauth
-from oauth_request import Request
+from simple_oauth.oauth_request import Request
 
 class TwitterStream(object):
     """
@@ -30,29 +29,6 @@ class TwitterStream(object):
         self.__response_stream = self.__oauth.get_response_content_iterator()
         return Tweets(self.__response_stream, self.__json_parser)
 
-class Tweet(object):
-    """
-    Class representing a tweet
-    """
-    def __init__(self, message, user_id):
-        """
-        Tweet
-        :param message: the tweet
-        :type message: str
-        :param user_id: the user id who sent this tweet
-        :type user_id: str
-        :return: the tweet
-        :rtype: Tweet
-        """
-        self.__message = message
-        self.__user_id = user_id
-
-    def get_message(self):
-        return self.__message
-
-    def get_user_id(self):
-        return self.__user_id
-
 class Tweets(object):
 
     def __init__(self, data_stream, json_parser):
@@ -73,16 +49,16 @@ class Tweets(object):
 
     def next(self):
         """
-        Returns a tuple of Tweet,UserID
-        :return: tuple of tweet and userid who made the tweet
-        :rtype: Tweet
+        Returns decoded json as a dict
+        :return: the tweet as dict
+        :rtype: dict
         """
         raw_text = next(self.__data_stream)
         if len(raw_text) > 0:
             try:
                 message = self.__json_parser.loads(raw_text)
                 if 'text' in message and 'user' in message:
-                    return Tweet(message['text'].encode('utf-8'), message['user']['id_str'].encode('utf-8'))
+                    return message
             except ValueError as ve:
                 return None
         else:
