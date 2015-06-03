@@ -1,5 +1,5 @@
 __author__ = 'jchugh'
-from oauth_token import Token
+from simple_oauth.oauth_token import Token
 
 """
 A class representing a request

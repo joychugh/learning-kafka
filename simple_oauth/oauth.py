@@ -1,11 +1,12 @@
 __author__ = 'jchugh'
 import uuid
 import time
-import oauth_utils
 from requests.models import Response
 import requests
 import copy
-from oauth_request import Request
+
+import oauth_utils
+from simple_oauth.oauth_request import Request
 from oauth_token import Token
 
 """

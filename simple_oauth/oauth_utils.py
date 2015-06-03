@@ -61,6 +61,3 @@ def get_hmac_sha1_digest(signing_key, message):
 
 def rfc3986_url_decode(url):
     return urlparse.parse_qs(rfc3986_decode(url))
-
-
-print rfc3986_url_decode('oauth_token=2aq4AW5Flj6JFyTLCKcNa70VIOCA2BMN&oauth_token_secret=uCFON0InLnD6EWHub1blLfXPbnXHspjW&oauth_callback_confirmed=true')
