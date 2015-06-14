@@ -170,7 +170,7 @@ class Oauth(object):
         :param request: the request object
         :type request: Request
         :return: None
-        :rtype: class:`Response`
+        :rtype: Response
         """
         method = request.get_method()
         is_streaming = request.is_streaming()

@@ -1,5 +1,5 @@
 __author__ = 'jchugh'
-
+from multiprocessing import Process
 from ConfigParser import NoOptionError
 from simple_kafka import kafka_client
 from simple_oauth.oauth import Oauth
@@ -8,6 +8,7 @@ from simple_oauth.oauth_token import Token
 from twitter import TwitterStream
 from config import config
 from kafka import KeyedProducer
+from simple_spark_example import spark_example
 
 try:
     import simplejson as json
@@ -65,7 +66,7 @@ def init():
                       method="POST",
                       is_streaming=True,
                       headers={'Accept-Encoding': 'deflate, gzip '},
-                      payload={'locations': '-74, 40, -73, 41'},
+                      payload={'locations': '-118.39,30.41,-59.61,49.46'},
                       token=token)
 
     max_stream = int(config.get('twitter', 'max_stream_responses'))
@@ -82,7 +83,12 @@ def init():
         if max_stream < 0:
             send_unlimited_messages(tweets, producer, topic)
         else:
-            send_limited_messages(max_stream, tweets, producer, topic, skip_invalid_responses, max_skip_invalid_responses)
+            send_limited_messages(max_stream,
+                                  tweets,
+                                  producer,
+                                  topic,
+                                  skip_invalid_responses,
+                                  max_skip_invalid_responses)
     except Exception as e:
         print e
     finally:
@@ -90,7 +96,15 @@ def init():
         kafka_client.close()
 
 if __name__ == '__main__':
-    init()
+    p = Process(target=init)
+    p.start()
+    spark_example.start_spark(30)
 
+    # If limited stream to get, wait till we get the given number of streams.
+    # If unlimited, terminate the process
+    if config.get('twitter', 'max_stream_responses') > 0:
+        p.join()
+    else:
+        p.terminate()
 
 
