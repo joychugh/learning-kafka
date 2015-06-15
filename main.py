@@ -98,7 +98,7 @@ def init():
 if __name__ == '__main__':
     p = Process(target=init)
     p.start()
-    spark_example.start_spark(30)
+    spark_example.start_spark()
 
     # If limited stream to get, wait till we get the given number of streams.
     # If unlimited, terminate the process

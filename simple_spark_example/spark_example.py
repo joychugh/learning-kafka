@@ -5,6 +5,10 @@ from pyspark.streaming.kafka import KafkaUtils
 from config import config
 from simple_spark_example.utils import extract_hashtags
 import simple_kafka
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 def update_state(current_state, previous_state):
     return sum(current_state) + (previous_state or 0)
@@ -23,13 +27,14 @@ def get_word_counts(streaming_context):
     return word_counts
 
 def send_to_kafka(element):
+    data = json.dumps(element)
     # http://apache-spark-user-list.1001560.n3.nabble.com/Writing-to-RabbitMQ-td11283.html
-    simple_kafka.producer.send_messages(config.get('kafka', 'output_topic'), str(element).encode('utf-8'))
+    simple_kafka.producer.send_messages(config.get('kafka', 'output_topic'), data.encode('utf-8'))
 
 def send_dstream_data(dstream):
-    dstream.foreachRDD(lambda rdd: send_to_kafka(rdd.collect()))
+    dstream.foreachRDD(lambda rdd: send_to_kafka(rdd.sortBy(lambda v: v[1], False).collect()))
 
-def start_spark(timeout):
+def start_spark(timeout=None):
     sc = SparkContext("local[4]", "KafkaWordCount")
     ssc = StreamingContext(sc, 10)
     ssc.checkpoint('hdfs://localhost:9000/user/spark/checkpoint/')
@@ -47,7 +52,10 @@ def start_spark(timeout):
     word_count = get_word_counts(ksc)
     send_dstream_data(word_count)
     ssc.start()
-    ssc.awaitTermination(timeout)
+    if timeout:
+        ssc.awaitTermination(timeout)
+    else:
+        ssc.awaitTermination()
     ssc.stop(stopSparkContext=True, stopGraceFully=True)
 
 if __name__ == '__main__':
