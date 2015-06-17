@@ -48,9 +48,9 @@ def send_unlimited_messages(t_tweets, k_producer, k_topic):
     while True:
         send_messages(t_tweets, k_producer, k_topic)
 
-def send_limited_messages(count, d_stream, t_tweets, k_topic, skip_invalid, max_skip):
+def send_limited_messages(count, t_tweets, k_producer, k_topic, skip_invalid, max_skip):
     for i in range(0, count):
-        send_messages(d_stream, t_tweets, k_topic, skip_invalid, max_skip)
+        send_messages(t_tweets, k_producer, k_topic, skip_invalid, max_skip)
 
 
 

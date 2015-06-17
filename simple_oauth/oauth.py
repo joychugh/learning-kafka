@@ -182,7 +182,7 @@ class Oauth(object):
                                             headers=request.get_headers(),
                                             stream=is_streaming)
         elif method == 'GET':
-            self.__response = requests.get(request.get_headers(),
+            self.__response = requests.get(request.get_url(),
                                            params=request.get_query_params(),
                                            headers=request.get_headers(),
                                            stream=is_streaming)
